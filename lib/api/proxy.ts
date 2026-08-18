@@ -70,7 +70,11 @@ export async function proxyToBackend(req: NextRequest, backendPath: string) {
             const value = response.headers.get(name);
             if (value) outHeaders.set(name, value);
         }
-        if (!outHeaders.has("content-type")) {
+        // Un corps sans type déclaré est de l'octet ; un corps vide n'est rien,
+        // et annoncer un type sur une réponse vide — un 401 ou un 403 de Spring
+        // Security n'en a pas — ne ferait qu'égarer le prochain qui lira ces
+        // en-têtes.
+        if (!outHeaders.has("content-type") && bytes.byteLength > 0) {
             outHeaders.set("content-type", "application/octet-stream");
         }
 
