@@ -186,7 +186,7 @@ export interface FichePaie {
 
 export type TransactionCategorie = "PAIEMENT_FOURNISSEUR" | "PAIEMENT_SOUSTRAIT" | "PAIEMENT_SALAIRE" | "ENCAISSEMENT_CLIENT" | "FRAIS_GENERAUX" | "DEPOT_BANQUE" | "RETRAIT_BANQUE" | "AUTRE";
 export type TypeTransaction = "CREDIT" | "DEBIT";
-export interface Transaction { id: string; typeTransaction: TypeTransaction; montant: number; motif: string; referenceDocument?: string; createdAt: string; caisseId: string; caisseLibelle: string; impactAnalytiqueChantier?: boolean; impactComptableFiscal?: boolean; }
+export interface Transaction { id: string; typeTransaction: TypeTransaction; montant: number; motif: string; referenceDocument?: string; createdAt: string; caisseId: string; caisseLibelle: string; impactAnalytiqueChantier?: boolean; impactComptableFiscal?: boolean; annule?: boolean; ajustement?: boolean; }
 export interface Caisse { id: string; code: string; libelle: string; chantierId: string; chantierNom: string; solde: number; seuilMinimum: number; enAlerte: boolean; }
 
 

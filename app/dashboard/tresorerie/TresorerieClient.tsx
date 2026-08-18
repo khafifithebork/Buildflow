@@ -10,6 +10,7 @@ import {
   createCaisse,
   createTransaction,
   updateTransactionIndicateurs,
+  annulerTransaction,
   type CreateCaisseDTO,
   type CreateTransactionDTO,
   type TypeTransaction,
@@ -22,6 +23,7 @@ import {
   matchesIndicateurFilter,
   type IndicateurFilterValue,
 } from "@/components/IndicateursOperation";
+import { extractApiErrorMessage } from "@/lib/api/client";
 import { fetchChantiers, type ChantierDTO } from "@/lib/api/chantier";
 import { fetchBpuLignes, type BpuLigneDTO } from "@/lib/api/bpu";
 import { CodeField } from "@/components/CodeField";
@@ -89,6 +91,30 @@ export default function TresorerieClient() {
     ),
     [transactions, filterAnalytique, filterFiscal]
   );
+
+  /**
+   * Cancels an operation that should not have happened. The server posts a
+   * reversing entry rather than deleting the row, so the ledger keeps both.
+   */
+  const handleAnnuler = useCallback(async (caisseId: string, t: Transaction) => {
+    const motif = prompt(
+      `Annuler cette opération ?
+
+${t.typeTransaction} ${t.montant} — ${t.motif}
+
+` +
+      `Le solde sera recrédité par une écriture inverse. Motif (facultatif) :`,
+      ""
+    );
+    if (motif === null) return;
+    setError(null);
+    try {
+      await annulerTransaction(caisseId, t.id, motif || undefined);
+      await load();
+    } catch (err) {
+      setError(extractApiErrorMessage(err, "Annulation impossible."));
+    }
+  }, [load]);
 
   /** Optimistic in-place toggle of one indicator on one cash operation. */
   const toggleIndicateur = useCallback(
@@ -207,6 +233,7 @@ export default function TresorerieClient() {
               transactions={filteredTransactions}
               onChanged={load}
               onToggleIndicateur={toggleIndicateur}
+              onAnnuler={handleAnnuler}
             />
           </Card>
         </Section>
@@ -271,6 +298,7 @@ function CaissesTable({
   transactions,
   onChanged,
   onToggleIndicateur,
+  onAnnuler,
 }: {
   caisses: Caisse[];
   transactions: Transaction[];
@@ -281,6 +309,7 @@ function CaissesTable({
     key: "impactAnalytiqueChantier" | "impactComptableFiscal",
     next: boolean
   ) => void;
+  onAnnuler: (caisseId: string, t: Transaction) => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -340,6 +369,7 @@ function CaissesTable({
                         transactions={tx}
                         onCreated={onChanged}
                         onToggleIndicateur={onToggleIndicateur}
+                        onAnnuler={onAnnuler}
                       />
                     </td>
                   </tr>
@@ -360,6 +390,7 @@ function TransactionsPanel({
   transactions,
   onCreated,
   onToggleIndicateur,
+  onAnnuler,
 }: {
   caisseId: string;
   chantierId: string;
@@ -371,6 +402,7 @@ function TransactionsPanel({
     key: "impactAnalytiqueChantier" | "impactComptableFiscal",
     next: boolean
   ) => void;
+  onAnnuler: (caisseId: string, t: Transaction) => void;
 }) {
   const [showAdd, setShowAdd] = useState(false);
   const [typeTransaction, setTypeTransaction] = useState<TypeTransaction>("CREDIT");
@@ -505,11 +537,19 @@ function TransactionsPanel({
               <th title={INDICATEURS.fiscal.tooltip} className="text-left px-2 py-1.5 font-bold uppercase tracking-wider text-content-muted dark:text-content-muted-dark">
                 {INDICATEURS.fiscal.short}
               </th>
+              <th className="text-left px-2 py-1.5 font-bold uppercase tracking-wider text-content-muted dark:text-content-muted-dark">
+                Action
+              </th>
             </tr>
           </thead>
           <tbody>
             {transactions.map((t) => (
-              <tr key={t.id} className="border-b border-edge-subtle dark:border-edge-subtle-dark">
+              <tr
+                key={t.id}
+                className={`border-b border-edge-subtle dark:border-edge-subtle-dark ${
+                  t.annule ? "opacity-55 line-through" : ""
+                }`}
+              >
                 <td className="px-2 py-2">
                   <span className={`font-semibold ${t.typeTransaction === "CREDIT" ? "text-green-600" : "text-red-500"}`}>
                     {t.typeTransaction === "CREDIT" ? "Crédit" : "Débit"}
@@ -536,6 +576,21 @@ function TransactionsPanel({
                       onToggleIndicateur(caisseId, t.id, "impactComptableFiscal", !(t.impactComptableFiscal ?? false))
                     }
                   />
+                </td>
+                <td className="px-2 py-2 whitespace-nowrap no-underline">
+                  {t.annule ? (
+                    <span className="text-[11px] font-semibold text-content-muted dark:text-content-muted-dark">Annulée</span>
+                  ) : t.ajustement ? (
+                    <span className="text-[11px] text-content-muted dark:text-content-muted-dark" title="Écriture de correction">Correction</span>
+                  ) : (
+                    <button
+                      onClick={() => onAnnuler(caisseId, t)}
+                      className="text-[11px] font-semibold text-red-600 dark:text-red-400 hover:underline"
+                      title="Annuler cette opération : le solde est recrédité par une écriture inverse"
+                    >
+                      Annuler
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

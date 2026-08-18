@@ -89,6 +89,18 @@ export async function validatePaiement(id: string, modePaiement: ModePaiement): 
 }
 
 /**
+ * Défait un règlement enregistré à tort : la commande repasse à FACTURE et la
+ * caisse récupère ce qui en était sorti. Le serveur refuse de contre-passer
+ * l'écriture depuis la caisse, c'est ici que ça se fait.
+ *
+ * PATCH /api/v1/achats/{id}/annuler-paiement
+ */
+export async function annulerPaiement(id: string, motif?: string): Promise<Achat> {
+  const { data } = await apiClient.patch(`/achats/${id}/annuler-paiement`, { motif });
+  return unwrapApiPayload<Achat>(data);
+}
+
+/**
  * Toggle the operational billing indicators on an existing achat.
  * PATCH /api/v1/achats/{id}/indicateurs
  */
@@ -118,6 +130,29 @@ export async function updateLignePrix(
   const { data } = await apiClient.patch<unknown>(
     `/achats/${achatId}/lignes/${ligneId}/prix`,
     { prixUnitaire },
+    { transformResponse: [(raw) => raw] }
+  );
+
+  const body = typeof data === "string" ? JSON.parse(data) : data;
+  return {
+    achat: unwrapApiPayload<Achat>(body),
+    warning: (body as { message?: string | null })?.message ?? null,
+  };
+}
+
+/**
+ * Re-price the whole commande to a new total HT — a renegotiated order rather
+ * than one renegotiated article. The lines keep the proportions they have.
+ *
+ * PATCH /api/v1/achats/{achatId}/montant
+ */
+export async function updateMontantHt(
+  achatId: string,
+  montantHt: number
+): Promise<{ achat: Achat; warning: string | null }> {
+  const { data } = await apiClient.patch<unknown>(
+    `/achats/${achatId}/montant`,
+    { montantHt },
     { transformResponse: [(raw) => raw] }
   );
 

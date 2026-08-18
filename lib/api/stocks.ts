@@ -18,6 +18,8 @@ export interface CreateMouvementStockDTO {
 
 export interface StockArticleDTO {
   id: string;
+  /** Needed to act on this line (affectation, mouvements). */
+  articleId: string;
   articleCode: string;
   designation: string;
   unite: string;
@@ -26,7 +28,10 @@ export interface StockArticleDTO {
   /** "Dépôt central" when there is no chantier. */
   chantierNom: string;
   emplacement: EmplacementStock;
+  /** Still available at this location — "Stock Dispo". */
   quantiteTheorique: number;
+  /** Incorporated into the works — "Stock Travaux (Posé)". */
+  quantiteTravaux: number;
   seuilAlerte: number;
   enAlerte: boolean;
 }
@@ -69,4 +74,22 @@ export async function fetchStocksDepot(
     params: { page, size, sort },
   });
   return toArrayPayload<StockArticleDTO>(data);
+}
+
+/**
+ * Incorporates material into the works — "poser" it.
+ *
+ * Moves quantity from available to posé at one location. Neither the location
+ * nor the total value of stock changes; only the split does.
+ * POST /api/v1/stocks/affectation-travaux
+ */
+export async function affecterAuxTravaux(payload: {
+  articleId: string;
+  /** Omit (or null) for the central dépôt. */
+  chantierId?: string | null;
+  quantite: number;
+  documentRef?: string;
+}): Promise<StockArticleDTO> {
+  const { data } = await apiClient.post<unknown>("/stocks/affectation-travaux", payload);
+  return unwrapApiPayload<StockArticleDTO>(data);
 }

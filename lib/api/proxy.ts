@@ -39,16 +39,16 @@ export async function proxyToBackend(req: NextRequest, backendPath: string) {
             cache: "no-store",
         });
 
-        // Try to parse JSON to return it properly formatted
-        let responseBody: unknown = null;
-        const text = await response.text();
-        if (text) {
-            try {
-                responseBody = JSON.parse(text);
-            } catch {
-                responseBody = text;
-            }
-        }
+        // The body is forwarded as bytes, never decoded.
+        //
+        // It used to be read with response.text(), which decodes as UTF-8. That
+        // is lossless for JSON and destructive for anything else: an .xlsx is a
+        // ZIP, and every byte sequence that is not valid UTF-8 became U+FFFD.
+        // A 10 KB export came out at 17 KB with 3 461 replacement characters
+        // and a wrecked central directory — Excel refused it as corrupt.
+        // Passing the ArrayBuffer through is exactly as correct for JSON and
+        // stops the proxy having an opinion about what it carries.
+        const bytes = await response.arrayBuffer();
 
         if (response.status >= 500) {
             logServerError("proxy.backend_error", { path: backendPath, method: req.method, status: response.status });
@@ -60,17 +60,21 @@ export async function proxyToBackend(req: NextRequest, backendPath: string) {
             return new NextResponse(null, { status: response.status });
         }
 
-        // Return the response preserving status code
-        if (typeof responseBody === "string") {
-            return new NextResponse(responseBody, {
-                status: response.status,
-                headers: {
-                    "Content-Type": response.headers.get("Content-Type") || "text/plain"
-                }
-            });
+        // Only headers that describe the payload travel with it. Hop-by-hop
+        // headers (content-encoding, transfer-encoding) must not: fetch has
+        // already decoded the body, so forwarding them would describe bytes
+        // that no longer exist. Content-Disposition matters here — it carries
+        // the download filename, and dropping it cost the export its date.
+        const outHeaders = new Headers();
+        for (const name of ["content-type", "content-disposition", "cache-control"]) {
+            const value = response.headers.get(name);
+            if (value) outHeaders.set(name, value);
+        }
+        if (!outHeaders.has("content-type")) {
+            outHeaders.set("content-type", "application/octet-stream");
         }
 
-        return NextResponse.json(responseBody, { status: response.status });
+        return new NextResponse(bytes, { status: response.status, headers: outHeaders });
     } catch (err) {
         logServerError("proxy.backend_unreachable", {
             path: backendPath,

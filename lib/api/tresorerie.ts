@@ -47,6 +47,10 @@ export interface CaisseTransactionDTO {
   impactAnalytiqueChantier: boolean;
   /** "Y a-t-il une facture officielle à déclarer ?" */
   impactComptableFiscal: boolean;
+  /** True once cancelled; a reversing entry carries the correction. */
+  annule: boolean;
+  /** True when this row IS a correction of another. */
+  ajustement: boolean;
 }
 
 export interface CaisseDTO {
@@ -151,6 +155,26 @@ export async function updateTransactionIndicateurs(
   const { data } = await apiClient.patch(
     `/caisses/${caisseId}/transactions/${transactionId}/indicateurs`,
     payload
+  );
+  return unwrapApiPayload<CaisseTransactionDTO>(data);
+}
+
+/**
+ * Cancels a cash movement that should not have happened — a wrong amount, a
+ * duplicate, a payment that never cleared.
+ *
+ * The balance is put back by a reversing entry; the original row is kept and
+ * marked cancelled, so the ledger still shows both.
+ * PATCH /api/v1/caisses/{caisseId}/transactions/{transactionId}/annuler
+ */
+export async function annulerTransaction(
+  caisseId: string,
+  transactionId: string,
+  motif?: string
+): Promise<CaisseTransactionDTO> {
+  const { data } = await apiClient.patch<unknown>(
+    `/caisses/${caisseId}/transactions/${transactionId}/annuler`,
+    { motif: motif ?? null }
   );
   return unwrapApiPayload<CaisseTransactionDTO>(data);
 }

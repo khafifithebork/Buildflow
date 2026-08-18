@@ -5,6 +5,7 @@ import {
   fetchStocksByChantier,
   fetchStocksDepot,
   createMouvementStock,
+  affecterAuxTravaux,
   type StockArticleDTO,
   type TypeMouvement,
 } from "@/lib/api/stocks";
@@ -113,6 +114,37 @@ export default function StocksClient() {
         err, "Impossible d'enregistrer ce mouvement (quantité insuffisante en stock ?)."));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  /**
+   * Incorporates material into the works. Quantity moves from available to posé
+   * at the same location — the material has not gone anywhere, it is laid.
+   */
+  const handleAffecter = async (row: StockArticleDTO) => {
+    const raw = prompt(
+      `Quantité de « ${row.designation} » à poser / incorporer aux travaux ?
+
+` +
+      `Disponible à ${row.chantierNom} : ${row.quantiteTheorique}`,
+      ""
+    );
+    if (raw === null) return;
+    const quantite = Number(raw.replace(",", "."));
+    if (!quantite || quantite <= 0) {
+      setError("Quantité invalide.");
+      return;
+    }
+    setError(null);
+    try {
+      await affecterAuxTravaux({
+        articleId: row.articleId,
+        chantierId: row.chantierId,
+        quantite,
+      });
+      await loadStocks(chantierId);
+    } catch (err) {
+      setError(extractApiErrorMessage(err, "Affectation impossible."));
     }
   };
 
@@ -297,7 +329,7 @@ export default function StocksClient() {
                 className="w-full sm:w-80 px-4 py-2 text-sm rounded-lg border border-edge-subtle dark:border-edge-subtle-dark bg-surface-page dark:bg-surface-page-dark text-content-primary dark:text-content-primary-dark placeholder:text-content-muted/50 focus:outline-none focus:ring-2 focus:ring-accent/40 transition-shadow"
               />
             </div>
-            <StocksTable stocks={filtered} />
+            <StocksTable stocks={filtered} canManage={canManage} onAffecter={handleAffecter} />
           </Card>
         </Section>
         </>
@@ -338,7 +370,15 @@ function StocksSkeleton() {
   );
 }
 
-function StocksTable({ stocks }: { stocks: StockArticleDTO[] }) {
+function StocksTable({
+  stocks,
+  canManage,
+  onAffecter,
+}: {
+  stocks: StockArticleDTO[];
+  canManage: boolean;
+  onAffecter: (s: StockArticleDTO) => void;
+}) {
   if (stocks.length === 0) {
     return (
       <div className="px-4 py-12 text-center">
@@ -352,7 +392,7 @@ function StocksTable({ stocks }: { stocks: StockArticleDTO[] }) {
       <table className="w-full text-sm border-collapse min-w-[700px]">
         <thead>
           <tr className="border-b-2 border-edge-default dark:border-edge-default-dark">
-            {["Code", "Désignation", "Unité", "Emplacement", "Qté théorique", "Seuil alerte", "Statut"].map(h => (
+            {["Code", "Désignation", "Unité", "Emplacement", "Stock dispo", "Stock travaux (posé)", "Seuil alerte", "Statut", "Actions"].map(h => (
               <th key={h} className="text-left px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-content-muted dark:text-content-muted-dark whitespace-nowrap">
                 {h}
               </th>
@@ -374,7 +414,8 @@ function StocksTable({ stocks }: { stocks: StockArticleDTO[] }) {
                   {s.chantierNom}
                 </span>
               </td>
-              <td className="px-3 py-3 text-content-secondary dark:text-content-secondary-dark">{s.quantiteTheorique.toLocaleString("fr-FR")}</td>
+              <td className="px-3 py-3 font-semibold text-green-700 dark:text-green-400">{s.quantiteTheorique.toLocaleString("fr-FR")}</td>
+              <td className="px-3 py-3 font-semibold text-amber-700 dark:text-amber-400">{(s.quantiteTravaux ?? 0).toLocaleString("fr-FR")}</td>
               <td className="px-3 py-3 text-content-secondary dark:text-content-secondary-dark">{s.seuilAlerte.toLocaleString("fr-FR")}</td>
               <td className="px-3 py-3">
                 {s.enAlerte ? (
@@ -387,6 +428,19 @@ function StocksTable({ stocks }: { stocks: StockArticleDTO[] }) {
                     <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a]" />
                     OK
                   </span>
+                )}
+              </td>
+              <td className="px-3 py-3 whitespace-nowrap">
+                {canManage && s.quantiteTheorique > 0 ? (
+                  <button
+                    onClick={() => onAffecter(s)}
+                    className="px-2.5 py-1 text-[11px] font-semibold rounded-md bg-amber-600 hover:bg-amber-700 text-white transition-colors"
+                    title="Incorporer ces matériaux aux travaux (dispo → posé)"
+                  >
+                    Affecter aux travaux
+                  </button>
+                ) : (
+                  <span className="text-xs text-content-muted dark:text-content-muted-dark">—</span>
                 )}
               </td>
             </tr>
