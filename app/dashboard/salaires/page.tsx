@@ -271,7 +271,7 @@ export default function SalairesPage() {
             </label>
 
             <label className="space-y-1">
-              <span className="text-xs font-semibold text-content-muted dark:text-content-muted-dark">IMPUTATION BPU (MAIN D'ŒUVRE)</span>
+              <span className="text-xs font-semibold text-content-muted dark:text-content-muted-dark">IMPUTATION BPU (MAIN D&apos;ŒUVRE)</span>
               <select
                 value={demandeForm.bpuLigneId}
                 onChange={(e) => setDemandeForm((p) => ({ ...p, bpuLigneId: e.target.value }))}
