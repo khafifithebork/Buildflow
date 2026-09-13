@@ -10,6 +10,14 @@ export interface DashboardKpisDTO {
   dettesFournisseursHt: number;
   dettesSousTraitantsHt: number;
   paieAPayerNet: number;
+  /**
+   * What each of the three debts above has already had settled against it,
+   * cumulative and every payment mode included. The debt figure is the
+   * remainder, so debt + settled is the total ever committed.
+   */
+  dettesFournisseursPayeTtc: number;
+  dettesSousTraitantsPayeTtc: number;
+  paieRegleeNet: number;
   attachementsEnCoursTtc: number;
   valeurStocksGlobaleHt: number;
   /** Split of the line above: still in the central dépôt. */

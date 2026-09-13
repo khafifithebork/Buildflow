@@ -590,7 +590,7 @@ function FinanceKpisSection({
           value={kpis?.dettesFournisseursTtc}
           textColor="text-red-600 dark:text-red-500"
           sub="Déjà payé TTC :"
-          subVal={0}
+          subVal={kpis?.dettesFournisseursPayeTtc}
           loading={loading}
         />
         <ModernKpiCard
@@ -599,7 +599,7 @@ function FinanceKpisSection({
           value={kpis?.dettesSousTraitantsTtc}
           textColor="text-red-600 dark:text-red-500"
           sub="Déjà payé TTC :"
-          subVal={0}
+          subVal={kpis?.dettesSousTraitantsPayeTtc}
           loading={loading}
         />
         <ModernKpiCard
@@ -608,7 +608,7 @@ function FinanceKpisSection({
           value={kpis?.paieAPayerNet}
           textColor="text-amber-600 dark:text-amber-500"
           sub="Déjà réglée NET :"
-          subVal={0}
+          subVal={kpis?.paieRegleeNet}
           loading={loading}
         />
         <ModernKpiCard

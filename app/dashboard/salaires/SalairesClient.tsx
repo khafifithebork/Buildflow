@@ -12,6 +12,7 @@ import {
   ModePaiementBadge,
   type ModePaiement,
 } from "@/components/ModePaiementDialog";
+import type { DemandePaieDTO, ModePaiement as DemModePaiement } from "@/lib/api/demandesPaie";
 import {
   ChartJsLoader, Section, ChartCard, Card,
   KpiGrid,
@@ -23,15 +24,22 @@ import {
   RefreshButton,
 } from "@/components/Functions";
 
-// ─── Main client component ────────────────────────────────────────────────────
 export default function SalairesClient({
   fiches,
+  demandes,
   onRefresh,
   refreshing,
+  onValiderDemande,
+  onPayerDemande,
+  onDeleteDemande,
 }: {
   fiches: SalarieDTO[];
+  demandes: DemandePaieDTO[];
   onRefresh?: () => void;
   refreshing?: boolean;
+  onValiderDemande?: (id: string) => Promise<void>;
+  onPayerDemande?: (id: string, mode: DemModePaiement) => Promise<void>;
+  onDeleteDemande?: (id: string) => Promise<void>;
 }) {
   const h = useMemo(
     () => hydrate<FichePaie, SalairesHydrated>(fiches as unknown as FichePaie[], salairesHydrationConfig),
@@ -40,12 +48,13 @@ export default function SalairesClient({
   const [search, setSearch] = useState("");
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  // Which payslip is having its mode chosen (before payment) or corrected (after).
   const [choosingModeId, setChoosingModeId] = useState<string | null>(null);
   const [changingModeId, setChangingModeId] = useState<string | null>(null);
   const [modeSubmitting, setModeSubmitting] = useState(false);
   const [modeError, setModeError] = useState<string | null>(null);
   const [modeNotice, setModeNotice] = useState<string | null>(null);
+  const [demandeActioningId, setDemandeActioningId] = useState<string | null>(null);
+  const [choosingDemandeMode, setChoosingDemandeMode] = useState<string | null>(null);
 
   const filtered = search
     ? fiches.filter(f =>
@@ -54,7 +63,7 @@ export default function SalairesClient({
     )
     : fiches;
 
-  const runAction = async (id: string, action: "valider") => {
+  const runAction = async (id: string) => {
     setActioningId(id);
     setActionError(null);
     try {
@@ -67,7 +76,6 @@ export default function SalairesClient({
     }
   };
 
-  /** Pay a validated payslip with the mode chosen in the popup. */
   const runPayer = async (modePaiement: ModePaiement) => {
     if (!choosingModeId) return;
     setModeSubmitting(true);
@@ -83,11 +91,6 @@ export default function SalairesClient({
     }
   };
 
-  /**
-   * Correct the mode of an already-paid payslip. The caisse balance is not
-   * adjusted by this; the server returns a warning when that leaves it out of
-   * step, and the change is recorded in the audit trail either way.
-   */
   const runChangeMode = async (modePaiement: ModePaiement) => {
     if (!changingModeId) return;
     setModeSubmitting(true);
@@ -106,11 +109,25 @@ export default function SalairesClient({
 
   const ficheEnCours = fiches.find(f => f.id === (choosingModeId ?? changingModeId));
 
+  const runValiderDemande = async (id: string) => {
+    setDemandeActioningId(id);
+    try { await onValiderDemande?.(id); } catch { } finally { setDemandeActioningId(null); }
+  };
+
+  const runPayerDemande = async (id: string, mode: DemModePaiement) => {
+    setDemandeActioningId(id);
+    try { await onPayerDemande?.(id, mode); } catch { } finally { setDemandeActioningId(null); setChoosingDemandeMode(null); }
+  };
+
+  const runDeleteDemande = async (id: string) => {
+    setDemandeActioningId(id);
+    try { await onDeleteDemande?.(id); } catch { } finally { setDemandeActioningId(null); }
+  };
+
   return (
     <ChartJsLoader>
       <div className="bg-surface-page dark:bg-surface-page-dark min-h-full py-6 px-4 sm:px-6 lg:px-8">
 
-        {/* Choosing the mode at payment time. */}
         <ModePaiementDialog
           open={choosingModeId !== null}
           subtitle={ficheEnCours ? `Fiche de paie ${ficheEnCours.reference}` : undefined}
@@ -120,7 +137,6 @@ export default function SalairesClient({
           onCancel={() => { setChoosingModeId(null); setModeError(null); }}
         />
 
-        {/* Correcting the mode of a payslip that is already paid. */}
         <ModePaiementDialog
           open={changingModeId !== null}
           title="Modifier le mode de paiement"
@@ -138,29 +154,31 @@ export default function SalairesClient({
             className="mb-6 flex items-start justify-between gap-4 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
           >
             <span>{modeNotice}</span>
-            <button
-              onClick={() => setModeNotice(null)}
-              aria-label="Fermer"
-              className="shrink-0 font-semibold opacity-70 hover:opacity-100 transition-opacity"
-            >
-              ✕
-            </button>
+            <button onClick={() => setModeNotice(null)} aria-label="Fermer" className="shrink-0 font-semibold opacity-70 hover:opacity-100 transition-opacity">✕</button>
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-content-primary dark:text-content-primary-dark">
-              Tableau de bord — Salaires
-            </h1>
-            <p className="text-sm text-content-muted dark:text-content-muted-dark mt-1">
-              Période {fiches[0]?.periode ?? "—"} · {fiches.length} fiches de paie
-            </p>
-          </div>
+        <div className="flex justify-end mb-6">
           {onRefresh && <RefreshButton onClick={onRefresh} loading={refreshing} />}
         </div>
 
-        <Section title="Vue d'ensemble">
+        {/* ── Demandes de Paie ── */}
+        <Section title="Historique & Paiements de la Main-d'œuvre">
+          <Card>
+            <DemandesPaieTable
+              demandes={demandes}
+              actioningId={demandeActioningId}
+              choosingModeId={choosingDemandeMode}
+              onSetChoosingMode={setChoosingDemandeMode}
+              onValider={runValiderDemande}
+              onPayer={runPayerDemande}
+              onDelete={runDeleteDemande}
+            />
+          </Card>
+        </Section>
+
+        {/* ── Charts & Fiches ── */}
+        <Section title="Vue d'ensemble — Fiches de paie">
           <KpiGrid kpis={h.kpis} />
         </Section>
 
@@ -217,6 +235,125 @@ export default function SalairesClient({
   );
 }
 
+// ── Demandes de Paie Table ────────────────────────────────────────────────────
+
+const STATUT_STYLE: Record<DemandePaieDTO["statut"], { bg: string; text: string; dot: string; label: string }> = {
+  SOUMISE:  { bg: "bg-amber-100 dark:bg-amber-900/30",  text: "text-amber-700 dark:text-amber-400",  dot: "#d97706", label: "Soumise" },
+  VALIDEE:  { bg: "bg-blue-100 dark:bg-blue-900/30",    text: "text-blue-700 dark:text-blue-400",    dot: "#2563eb", label: "Validée" },
+  PAYEE:    { bg: "bg-green-100 dark:bg-green-900/30",  text: "text-green-700 dark:text-green-400",  dot: "#16a34a", label: "Payée" },
+};
+
+function DemandesPaieTable({
+  demandes,
+  actioningId,
+  choosingModeId,
+  onSetChoosingMode,
+  onValider,
+  onPayer,
+  onDelete,
+}: {
+  demandes: DemandePaieDTO[];
+  actioningId: string | null;
+  choosingModeId: string | null;
+  onSetChoosingMode: (id: string | null) => void;
+  onValider: (id: string) => void;
+  onPayer: (id: string, mode: DemModePaiement) => void;
+  onDelete: (id: string) => void;
+}) {
+  if (demandes.length === 0) {
+    return (
+      <div className="px-4 py-10 text-center">
+        <p className="text-sm text-content-muted dark:text-content-muted-dark">Aucune demande de paie. Utilisez le bouton «&nbsp;Émettre une Demande de Paie&nbsp;» pour commencer.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm border-collapse min-w-[750px]">
+        <thead>
+          <tr className="border-b-2 border-edge-default dark:border-edge-default-dark">
+            {["DATE ÉMISSION", "DÉSIGNATION / PÉRIODE", "AFFECTATION & IMPUTATION BPU", "MONTANT (NET)", "STATUT", "ACTIONS"].map(h => (
+              <th key={h} className="text-left px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-content-muted dark:text-content-muted-dark whitespace-nowrap">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {demandes.map(d => {
+            const style = STATUT_STYLE[d.statut];
+            const busy = actioningId === d.id;
+            return (
+              <tr key={d.id} className="border-b border-edge-subtle dark:border-edge-subtle-dark hover:bg-surface-hover dark:hover:bg-surface-hover-dark transition-colors">
+                <td className="px-3 py-3 text-content-secondary dark:text-content-secondary-dark whitespace-nowrap text-xs">
+                  {new Date(d.createdAt).toLocaleDateString("fr-MA")}
+                </td>
+                <td className="px-3 py-3">
+                  <p className="font-semibold text-content-primary dark:text-content-primary-dark">{d.libelle}</p>
+                  <p className="text-xs text-content-muted dark:text-content-muted-dark mt-0.5">{d.periode}</p>
+                </td>
+                <td className="px-3 py-3">
+                  {d.chantierNom ? (
+                    <>
+                      <p className="text-content-primary dark:text-content-primary-dark">{d.chantierNom}</p>
+                      {d.bpuLigneRef && <p className="text-xs text-accent mt-0.5">BPU: {d.bpuLigneRef}</p>}
+                    </>
+                  ) : (
+                    <p className="text-content-muted dark:text-content-muted-dark text-xs">Siège (global)</p>
+                  )}
+                </td>
+                <td className="px-3 py-3 font-semibold text-content-primary dark:text-content-primary-dark whitespace-nowrap">
+                  {d.montantNet.toLocaleString("fr-FR")} MAD
+                </td>
+                <td className="px-3 py-3">
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${style.bg} ${style.text}`}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: style.dot }} />
+                    {style.label}
+                  </span>
+                  {d.statut === "PAYEE" && d.modePaiement && (
+                    <p className="text-[10px] text-content-muted dark:text-content-muted-dark mt-0.5">
+                      {d.modePaiement === "CAISSE" ? "✓ Payé (caisse)" : "✓ Payé (virement)"}
+                    </p>
+                  )}
+                </td>
+                <td className="px-3 py-3 whitespace-nowrap">
+                  {d.statut === "SOUMISE" && (
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => onValider(d.id)} disabled={busy} className="px-3 py-1.5 text-xs font-semibold text-white bg-accent hover:bg-accent/90 disabled:opacity-50 rounded-lg transition-colors">
+                        {busy ? "…" : "Valider"}
+                      </button>
+                      <button onClick={() => onDelete(d.id)} disabled={busy} className="px-2.5 py-1.5 text-xs font-semibold text-red-600 border border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 rounded-lg transition-colors">
+                        {busy ? "…" : "✕"}
+                      </button>
+                    </div>
+                  )}
+                  {d.statut === "VALIDEE" && choosingModeId !== d.id && (
+                    <button onClick={() => onSetChoosingMode(d.id)} disabled={busy} className="px-3 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-lg transition-colors">
+                      {busy ? "…" : "Payer"}
+                    </button>
+                  )}
+                  {d.statut === "VALIDEE" && choosingModeId === d.id && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-content-muted dark:text-content-muted-dark">Via :</span>
+                      <button onClick={() => onPayer(d.id, "VIREMENT")} disabled={busy} className="px-2.5 py-1 text-xs font-semibold text-accent border border-accent/30 rounded-lg hover:bg-accent/5 disabled:opacity-50 transition-colors">{busy ? "…" : "Virement"}</button>
+                      <button onClick={() => onPayer(d.id, "CAISSE")} disabled={busy} className="px-2.5 py-1 text-xs font-semibold text-white bg-accent hover:bg-accent/90 rounded-lg disabled:opacity-50 transition-colors">{busy ? "…" : "Caisse"}</button>
+                      <button onClick={() => onSetChoosingMode(null)} disabled={busy} className="text-xs text-content-muted hover:text-content-primary transition-colors">✕</button>
+                    </div>
+                  )}
+                  {d.statut === "PAYEE" && (
+                    <span className="text-xs text-green-600 dark:text-green-400 font-medium">✓ Terminé</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Fiches de Paie Table ──────────────────────────────────────────────────────
+
 function FichesTable({
   fiches,
   actioningId,
@@ -226,7 +363,7 @@ function FichesTable({
 }: {
   fiches: SalarieDTO[];
   actioningId: string | null;
-  onAction: (id: string, action: "valider") => void;
+  onAction: (id: string) => void;
   onChooseMode: (id: string | null) => void;
   onChangeMode: (id: string | null) => void;
 }) {
@@ -250,9 +387,7 @@ function FichesTable({
         <thead>
           <tr className="border-b-2 border-edge-default dark:border-edge-default-dark">
             {["Référence", "Employé", "Période", "Salaire base", "Net à payer", "Statut", "Actions"].map(h => (
-              <th key={h} className="text-left px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-content-muted dark:text-content-muted-dark whitespace-nowrap">
-                {h}
-              </th>
+              <th key={h} className="text-left px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-content-muted dark:text-content-muted-dark whitespace-nowrap">{h}</th>
             ))}
           </tr>
         </thead>
@@ -277,31 +412,19 @@ function FichesTable({
                 </td>
                 <td className="px-3 py-3 whitespace-nowrap">
                   {f.statut === "BROUILLON" && (
-                    <button
-                      onClick={() => onAction(f.id, "valider")}
-                      disabled={isBusy}
-                      className="px-3 py-1.5 text-xs font-semibold text-accent border border-accent/30 rounded-lg hover:bg-accent/5 disabled:opacity-50 transition-colors"
-                    >
+                    <button onClick={() => onAction(f.id)} disabled={isBusy} className="px-3 py-1.5 text-xs font-semibold text-accent border border-accent/30 rounded-lg hover:bg-accent/5 disabled:opacity-50 transition-colors">
                       {isBusy ? "…" : "Valider"}
                     </button>
                   )}
                   {f.statut === "VALIDE" && (
-                    <button
-                      onClick={() => onChooseMode(f.id)}
-                      disabled={isBusy}
-                      className="px-3 py-1.5 text-xs font-semibold text-white bg-accent hover:bg-accent/90 rounded-lg disabled:opacity-50 transition-colors"
-                    >
+                    <button onClick={() => onChooseMode(f.id)} disabled={isBusy} className="px-3 py-1.5 text-xs font-semibold text-white bg-accent hover:bg-accent/90 rounded-lg disabled:opacity-50 transition-colors">
                       {isBusy ? "…" : "Payer"}
                     </button>
                   )}
                   {f.statut === "PAYEE" && (
                     <div className="flex items-center gap-2">
                       <ModePaiementBadge mode={f.modePaiement} />
-                      <button
-                        onClick={() => onChangeMode(f.id)}
-                        disabled={isBusy}
-                        className="text-xs text-accent font-semibold hover:underline disabled:opacity-50"
-                      >
+                      <button onClick={() => onChangeMode(f.id)} disabled={isBusy} className="text-xs text-accent font-semibold hover:underline disabled:opacity-50">
                         Modifier
                       </button>
                     </div>
