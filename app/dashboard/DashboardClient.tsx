@@ -263,11 +263,33 @@ export default function DashboardClient() {
 
   const stocksEnAlerte = stocks.filter((s) => s.enAlerte);
 
+  // Dette fournisseurs : même source que la carte du haut.
+  //
+  // Ce tuilage lisait SUM(fournisseur.soldeImpaye). Le champ existe en base,
+  // dans le DTO et dans l'export Excel, mais rien ne l'écrit jamais — aucun
+  // setSoldeImpaye dans le backend, et le mapper l'ignore explicitement. Il
+  // valait donc 0 en permanence, juste sous une carte qui affichait la vraie
+  // dette : deux chiffres contradictoires pour la même chose sur un écran.
+  const resteFournisseurs = kpis?.dettesFournisseursTtc;
+  const payeFournisseurs = kpis?.dettesFournisseursPayeTtc;
+  const engageFournisseurs =
+    resteFournisseurs !== undefined && payeFournisseurs !== undefined
+      ? resteFournisseurs + payeFournisseurs
+      : undefined;
+  // Le sous-titre dit la part soldée plutôt qu'un taux d'impayé calculé sur un
+  // champ mort. Sans rien d'engagé, un pourcentage ne veut rien dire.
+  const sousTitreFournisseurs =
+    engageFournisseurs === undefined || payeFournisseurs === undefined
+      ? ""
+      : engageFournisseurs > 0
+        ? `${Math.round((payeFournisseurs / engageFournisseurs) * 100)}% déjà réglé`
+        : "rien engagé";
+
   const topCards = [
     {
       title: "Dettes Fournisseurs",
-      value: hFournisseurs.kpis[2]?.value ?? "—",
-      sub: hFournisseurs.kpis[2]?.sub ?? "",
+      value: resteFournisseurs !== undefined ? fmt(resteFournisseurs) : "—",
+      sub: sousTitreFournisseurs,
       href: "/dashboard/fournisseurs",
     },
     {
