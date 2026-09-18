@@ -31,7 +31,12 @@ export interface DashboardKpisDTO {
   decaissementsGlobauxTtc: number;
   /** Same outflows net of the recoverable TVA on settled purchases. */
   decaissementsGlobauxHt: number;
-  /** Outflows flagged effet chantier and not effet fiscal. */
+  /**
+   * Outflows flagged effet chantier and not effet fiscal.
+   *
+   * No longer feeds Résultat Hors Fiscalité — that reads the real outflows
+   * now. Still served, and still a column of its own in the Excel export.
+   */
   decaissementsEffetChantierHt: number;
 
   // Margin formulas.

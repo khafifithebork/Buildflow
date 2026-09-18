@@ -719,8 +719,8 @@ function FinanceKpisSection({
       <div className="bg-surface-card dark:bg-surface-card-dark p-6 rounded-xl border border-edge-default dark:border-[#242830] mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <div>
           <h4 className="text-sm font-bold text-content-secondary dark:text-[#5a6275] uppercase tracking-wider">RÉSULTAT HORS FISCALITÉ (HT)</h4>
-          <p className="text-xs text-content-muted dark:text-[#3d4350] mt-1">Formule : Encaissements Réels HT - Décaissements « effet chantier » HT</p>
-          <p className="text-[11px] italic text-content-muted/85 dark:text-[#3d4350] mt-1">Flux opérationnels uniquement, hors stocks. Seules les opérations à effet chantier sont retenues ; toute opération à effet fiscal est exclue. Décaissements retenus : {kpis?.decaissementsEffetChantierHt !== undefined ? `${fmt(kpis.decaissementsEffetChantierHt)} MAD` : "—"}</p>
+          <p className="text-xs text-content-muted dark:text-[#3d4350] mt-1">Formule : Encaissements Réels HT - Décaissements Réels HT (Achats HT + Paie + Caisse)</p>
+          <p className="text-[11px] italic text-content-muted/85 dark:text-[#3d4350] mt-1">Flux opérationnels uniquement, hors stocks : c’est la seule chose qui le sépare de la marge nette. Tous les décaissements réels sont retenus — la paie et la caisse à leur montant, les achats en HT. Décaissements retenus : {kpis?.decaissementsGlobauxHt !== undefined ? `${fmt(kpis.decaissementsGlobauxHt)} MAD` : "—"}</p>
         </div>
         <div className={`text-3xl font-black font-['Space_Grotesk'] mt-4 sm:mt-0 ${kpis?.resultatHorsFiscaliteHt && kpis.resultatHorsFiscaliteHt < 0 ? "text-red-600 dark:text-red-500" : "text-green-600 dark:text-green-500"}`}>
           {loading ? <Skeleton className="w-32 h-8" /> : `${kpis?.resultatHorsFiscaliteHt !== undefined ? fmt(kpis.resultatHorsFiscaliteHt) : "—"} MAD`}
