@@ -24,6 +24,12 @@ export interface DashboardKpisDTO {
   valeurStocksDepotHt: number;
   /** Split of the line above: allocated to chantiers ("en travaux"). */
   valeurStocksEnTravauxHt: number;
+  /**
+   * Le même stock découpé par emplacement plutôt que par disponibilité.
+   * Purement informatif : n'entre dans aucune formule.
+   */
+  valeurStocksAuDepotHt: number;
+  valeurStocksSurChantiersHt: number;
 
   // Flow KPIs — scoped to `month` when provided, all-time otherwise.
   decaissementsCaisseTtc: number;
