@@ -697,6 +697,39 @@ function FinanceKpisSection({
           }
           loading={loading}
         />
+        {/* Le même stock, découpé par emplacement au lieu de la disponibilité.
+            Carte purement informative : aucune de ces deux valeurs n'entre dans
+            une formule — seule la valeur globale ci-contre le fait, via la
+            marge nette comptable. Le libellé le dit, pour qu'on ne l'additionne
+            pas de tête avec la carte voisine. */}
+        <ModernKpiCard
+          color="white"
+          label="STOCKS PAR EMPLACEMENT (HT)"
+          value={kpis?.valeurStocksGlobaleHt}
+          textColor="text-content-primary dark:text-white"
+          subNode={
+            <div className="text-[11px] text-content-muted dark:text-[#5a6275] mt-2 space-y-1 font-bold">
+              <div className="flex justify-between">
+                <span>
+                  Au dépôt:{" "}
+                  <span className="text-content-primary dark:text-white">
+                    {loading || kpis?.valeurStocksAuDepotHt === undefined ? "—" : fmt(kpis.valeurStocksAuDepotHt)}
+                  </span>
+                </span>
+                <span>
+                  Sur chantiers:{" "}
+                  <span className="text-blue-600 dark:text-blue-500">
+                    {loading || kpis?.valeurStocksSurChantiersHt === undefined ? "—" : fmt(kpis.valeurStocksSurChantiersHt)}
+                  </span>
+                </span>
+              </div>
+              <div className="italic font-normal text-content-muted/85 dark:text-[#3d4350]">
+                Informatif — n&apos;entre dans aucun calcul
+              </div>
+            </div>
+          }
+          loading={loading}
+        />
       </div>
 
       {/* MARGES */}
