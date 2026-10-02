@@ -30,6 +30,12 @@ export interface DashboardKpisDTO {
    */
   valeurStocksAuDepotHt: number;
   valeurStocksSurChantiersHt: number;
+  /**
+   * Le stock retenu par la marge nette comptable : celui de l'effet chantier.
+   * Égal au stock global tant qu'un mouvement de stock ne peut pas être
+   * rattaché à l'achat qui l'a créé.
+   */
+  valeurStocksEffetChantierHt: number;
 
   // Flow KPIs — scoped to `month` when provided, all-time otherwise.
   decaissementsCaisseTtc: number;
