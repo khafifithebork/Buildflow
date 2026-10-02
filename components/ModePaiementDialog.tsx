@@ -61,6 +61,7 @@ export function ModePaiementDialog({
   title = "Choisir le mode de paiement",
   subtitle,
   current,
+  resteAPayer,
   submitting = false,
   error,
   onConfirm,
@@ -70,13 +71,30 @@ export function ModePaiementDialog({
   title?: string;
   subtitle?: string;
   current?: ModePaiement | null;
+  /**
+   * Ce qu'il reste à régler. Fourni, le dialogue propose un montant modifiable
+   * et autorise un règlement partiel ; absent, il se contente du mode.
+   */
+  resteAPayer?: number;
   submitting?: boolean;
   error?: string | null;
-  onConfirm: (mode: ModePaiement) => void;
+  onConfirm: (mode: ModePaiement, montant?: number) => void;
   onCancel: () => void;
 }) {
   const [selected, setSelected] = useState<ModePaiement | null>(current ?? null);
+  const [montant, setMontant] = useState<string>("");
   const panelRef = useRef<HTMLDivElement>(null);
+
+  // Par défaut on solde : le montant proposé est le reste entier. Le saisir à
+  // la baisse est un geste délibéré, pas un oubli.
+  useEffect(() => {
+    if (open) setMontant(resteAPayer !== undefined ? String(resteAPayer) : "");
+  }, [open, resteAPayer]);
+
+  const montantNum = Number(montant);
+  const montantInvalide =
+    resteAPayer !== undefined &&
+    (!montant.trim() || Number.isNaN(montantNum) || montantNum <= 0 || montantNum > resteAPayer);
 
   // Reset to the document's own mode each time the dialog is opened, so a
   // previous choice never leaks into the next document.
@@ -115,6 +133,32 @@ export function ModePaiementDialog({
         </h2>
         {subtitle && (
           <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">{subtitle}</p>
+        )}
+
+        {resteAPayer !== undefined && (
+          <div className="mt-4">
+            <label
+              htmlFor="montant-reglement"
+              className="block text-xs font-semibold text-content-primary dark:text-content-primary-dark"
+            >
+              Montant à régler
+            </label>
+            <input
+              id="montant-reglement"
+              type="number"
+              step="0.01"
+              min="0"
+              max={resteAPayer}
+              value={montant}
+              disabled={submitting}
+              onChange={(e) => setMontant(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-edge-subtle dark:border-edge-subtle-dark bg-surface-page dark:bg-surface-page-dark px-3 py-2 text-sm text-content-primary dark:text-content-primary-dark focus:outline-none focus:ring-2 focus:ring-accent/40"
+            />
+            <p className="mt-1 text-[11px] text-content-muted dark:text-content-muted-dark">
+              Reste à payer : {resteAPayer.toLocaleString("fr-MA", { maximumFractionDigits: 2 })} MAD.
+              Un montant inférieur laisse la commande en facturé, avec le solde encore dû.
+            </p>
+          </div>
         )}
 
         <div className="mt-4 space-y-2">
@@ -164,8 +208,8 @@ export function ModePaiementDialog({
           </button>
           <button
             type="button"
-            onClick={() => selected && onConfirm(selected)}
-            disabled={submitting || !selected}
+            onClick={() => selected && onConfirm(selected, resteAPayer !== undefined ? montantNum : undefined)}
+            disabled={submitting || !selected || montantInvalide}
             className="px-5 py-2 text-sm font-semibold text-white bg-accent hover:bg-accent/90 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? "Enregistrement…" : "Confirmer"}

@@ -52,6 +52,8 @@ export interface TableRow {
     ht: number;
     tva: number;
     ttc: number;
+    /** Cumul déjà réglé, pour distinguer une commande à moitié payée. */
+    montantPaye?: number;
     statusLabel: string;
     statusBg: string;
     statusText: string;
@@ -113,7 +115,7 @@ const color = (i: number) => CHART_COLORS[i % CHART_COLORS.length];
 
 export type AchatStatus = "EN_COURS" | "LIVRE" | "FACTURE" | "PAYE";
 export interface LigneAchat { id: string; articleCode: string; designation: string; quantite: number; unite: string; prixUnitaire: number; total: number; bpuLigneRef?: string; }
-export interface Achat { id: string; ref: string; fournisseurNom: string; chantierNom: string; dateCommande: string; dateLivraisonPrevue: string; status: AchatStatus; ht: number; tva: number; ttc: number; lignes: LigneAchat[]; bonLivraisonRef?: string; factureRef?: string; modePaiement?: ModePaiement; impactAnalytiqueChantier?: boolean; impactComptableFiscal?: boolean; }
+export interface Achat { id: string; ref: string; fournisseurNom: string; chantierNom: string; dateCommande: string; dateLivraisonPrevue: string; status: AchatStatus; ht: number; tva: number; ttc: number; montantPaye?: number; lignes: LigneAchat[]; bonLivraisonRef?: string; factureRef?: string; modePaiement?: ModePaiement; impactAnalytiqueChantier?: boolean; impactComptableFiscal?: boolean; }
 
 export type FournisseurStatut = "ACTIF" | "INACTIF" | "BLACKLISTE";
 export interface Fournisseur { id: string; code: string; raisonSociale: string; ice: string; contact: string; telephone: string; email: string; ville: string; adresse: string; rib: string; banque: string; statut: FournisseurStatut; categorieArticles: string[]; totalAchatsAnnee: number; soldeImpaye: number; }
@@ -291,7 +293,7 @@ export const achatsHydrationConfig = {
             id: a.id, ref: a.ref,
             col1: a.fournisseurNom, col2: a.chantierNom,
             col3: new Date(a.dateCommande).toLocaleDateString("fr-MA"),
-            ht: a.ht, tva: a.tva, ttc: a.ttc,
+            ht: a.ht, tva: a.tva, ttc: a.ttc, montantPaye: a.montantPaye ?? 0,
             statusLabel: ACHAT_STATUS_META[a.status].label,
             statusBg: ACHAT_STATUS_META[a.status].bg,
             statusText: ACHAT_STATUS_META[a.status].text,

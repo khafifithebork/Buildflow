@@ -74,17 +74,24 @@ export async function validateFacture(id: string, factureRef: string): Promise<A
 }
 
 /**
- * Settle the order with an explicit payment mode. Only CAISSE debits the
- * chantier's caisse (and can fail with 422 "Insufficient funds"); a virement,
- * cheque or effet clears through the bank and leaves the balance untouched.
- * PATCH /api/v1/achats/{id}/validate-paiement — roles ADMIN, FINANCE
+ * Règle une partie de la commande. Le solde bascule en PAYE de lui-même quand
+ * le cumul réglé rejoint le TTC ; tant qu'il reste quelque chose, la commande
+ * demeure en FACTURE avec une dette résiduelle.
+ *
+ * Seul le montant de ce règlement sort de la caisse quand le mode est CAISSE,
+ * pas le TTC entier.
+ *
+ * PATCH /api/v1/achats/{id}/regler — rôles ADMIN, FINANCE
  */
-export async function validatePaiement(id: string, modePaiement: ModePaiement): Promise<Achat> {
-  const { data } = await apiClient.patch<unknown>(
-    `/achats/${id}/validate-paiement`,
-    null,
-    { params: { modePaiement } }
-  );
+export async function reglerAchat(
+  id: string,
+  montant: number,
+  modePaiement: ModePaiement
+): Promise<Achat> {
+  const { data } = await apiClient.patch<unknown>(`/achats/${id}/regler`, {
+    montant,
+    modePaiement,
+  });
   return unwrapApiPayload<Achat>(data);
 }
 
