@@ -10,7 +10,7 @@ import {
   validateBL,
   validateFacture,
   annulerPaiement,
-  validatePaiement,
+  reglerAchat,
 } from "@/lib/api/achats";
 import { extractApiErrorMessage } from "@/lib/api/client";
 import { useAuth } from "@/lib/authContext";
@@ -274,23 +274,35 @@ export default function AchatsClient() {
   const [modeSubmitting, setModeSubmitting] = useState(false);
   const [modeError, setModeError] = useState<string | null>(null);
 
-  /** FACTURE -> PAYE with the mode chosen in the popup. */
-  const confirmPaiement = useCallback(async (modePaiement: ModePaiement) => {
+  /**
+   * Règle tout ou partie de la commande, avec le mode choisi dans la popup.
+   *
+   * Un montant inférieur au reste dû laisse la commande en FACTURE : le solde
+   * demeure une dette fournisseur, et le message le dit plutôt que de laisser
+   * croire que la commande est soldée.
+   */
+  const confirmPaiement = useCallback(async (modePaiement: ModePaiement, montant?: number) => {
     if (!payingAchat) return;
+    const reste = payingAchat.ttc - (payingAchat.montantPaye ?? 0);
+    const verse = montant ?? reste;
     setModeSubmitting(true);
     setModeError(null);
     try {
-      await validatePaiement(payingAchat.id, modePaiement);
+      await reglerAchat(payingAchat.id, verse, modePaiement);
+      const solde = verse >= reste;
+      const surCaisse = modePaiement === "CAISSE"
+        ? ` La caisse a été débitée de ${fmt(verse)}.`
+        : " La caisse n'a pas été débitée.";
       setNotice({
         kind: "success",
-        text: modePaiement === "CAISSE"
-          ? `${payingAchat.ref} soldé en espèces. La caisse a été débitée de ${fmt(payingAchat.ttc)}.`
-          : `${payingAchat.ref} soldé par ${modePaiement.toLowerCase()}. La caisse n'a pas été débitée.`,
+        text: solde
+          ? `${payingAchat.ref} soldé par ${modePaiement.toLowerCase()}.${surCaisse}`
+          : `${fmt(verse)} réglés sur ${payingAchat.ref}. Reste ${fmt(reste - verse)} à payer.${surCaisse}`,
       });
       setPayingAchat(null);
       await load();
     } catch (err) {
-      setModeError(extractApiErrorMessage(err, `Impossible de solder ${payingAchat.ref}.`));
+      setModeError(extractApiErrorMessage(err, `Impossible de régler ${payingAchat.ref}.`));
     } finally {
       setModeSubmitting(false);
     }
@@ -450,6 +462,7 @@ Motif (facultatif) :`,
           subtitle={payingAchat
             ? `Commande ${payingAchat.ref} — ${fmt(payingAchat.ttc)} TTC · chantier ${payingAchat.chantierNom}`
             : undefined}
+          resteAPayer={payingAchat ? payingAchat.ttc - (payingAchat.montantPaye ?? 0) : undefined}
           submitting={modeSubmitting}
           error={modeError}
           onConfirm={confirmPaiement}
@@ -1293,7 +1306,17 @@ function AchatsTable({
                 <td className="px-3 py-3 text-content-secondary dark:text-content-secondary-dark">{row.col3}</td>
                 <td className="px-3 py-3 font-semibold text-content-primary dark:text-content-primary-dark">{fmt(row.ht)}</td>
                 <td className="px-3 py-3 text-content-secondary dark:text-content-secondary-dark">{fmt(row.tva)}</td>
-                <td className="px-3 py-3 font-bold text-content-primary dark:text-content-primary-dark">{fmt(row.ttc)}</td>
+                <td className="px-3 py-3 font-bold text-content-primary dark:text-content-primary-dark">
+                  {fmt(row.ttc)}
+                  {/* Un reglement partiel laisse la commande en FACTURE : sans
+                      ce rappel, rien a l'ecran ne distingue une commande
+                      intacte d'une commande a moitie reglee. */}
+                  {(row.montantPaye ?? 0) > 0 && (row.montantPaye ?? 0) < row.ttc && (
+                    <span className="block text-[10px] font-semibold text-green-600 dark:text-green-500">
+                      {fmt(row.montantPaye ?? 0)} réglés · reste {fmt(row.ttc - (row.montantPaye ?? 0))}
+                    </span>
+                  )}
+                </td>
                 <td className="px-3 py-3">
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${row.statusBg} ${row.statusText}`}>
                     <span className="w-1.5 h-1.5 rounded-full" style={{ background: row.statusDot }} />

@@ -55,9 +55,12 @@ export interface DashboardKpisDTO {
    */
   decaissementsReelsHt: number;
 
-  // Margin formulas.
+  // Les deux lectures du résultat : elles diffèrent par le périmètre des
+  // décaissements — l'une écarte l'effet fiscal, l'autre non — et par celui
+  // du stock.
+  /** Calcul 2 : la situation globale, effet fiscal compris. */
   margeNetteComptableHt: number;
-  /** The margin read entirely on HT — no TVA on either side. */
+  /** Calcul 1 : la situation réelle d'exploitation, hors effet fiscal. */
   resultatHorsFiscaliteHt: number;
   margeEnCoursPrevisionnelleHt: number;
 }
