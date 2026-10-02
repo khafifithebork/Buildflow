@@ -736,7 +736,8 @@ function FinanceKpisSection({
       <div className="bg-surface-card dark:bg-surface-card-dark p-6 rounded-xl border border-edge-default dark:border-[#242830] mt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <div>
           <h4 className="text-sm font-bold text-content-secondary dark:text-[#5a6275] uppercase tracking-wider">MARGE NETTE COMPTABLE (HT)</h4>
-          <p className="text-xs text-content-muted dark:text-[#3d4350] mt-1">Formule : Encaissements Réels HT - Décaissements Réels HT (Achats HT + Sous-traitance HT + Paie + Caisse) + Stock « effet chantier » HT</p>
+          <p className="text-xs text-content-muted dark:text-[#3d4350] mt-1">Formule : Encaissements Réels HT - Décaissements Réels HT (hors effet fiscal) + Stock « effet chantier » HT</p>
+          <p className="text-[11px] italic text-content-muted/85 dark:text-[#3d4350] mt-1">Seules les opérations à effet chantier sont retenues ; une opération à effet fiscal en est exclue. La sous-traitance et la paie ne portent pas ces indicateurs et entrent entières. Décaissements retenus : {kpis?.decaissementsReelsHt !== undefined ? `${fmt(kpis.decaissementsReelsHt)} MAD` : "—"}</p>
           {/* Secondary note: the formula nets operational flows only, so the
               figure is not a taxable result. Kept subordinate to the formula. */}
           <p className="text-[11px] italic text-content-muted/85 dark:text-[#3d4350] mt-1">Indicateur calculé hors fiscalité (flux opérationnels ajustés)</p>
@@ -753,7 +754,7 @@ function FinanceKpisSection({
         <div>
           <h4 className="text-sm font-bold text-content-secondary dark:text-[#5a6275] uppercase tracking-wider">RÉSULTAT HORS FISCALITÉ (HT)</h4>
           <p className="text-xs text-content-muted dark:text-[#3d4350] mt-1">Formule : Encaissements Réels HT - Décaissement global HT + Valeur des Stocks HT</p>
-          <p className="text-[11px] italic text-content-muted/85 dark:text-[#3d4350] mt-1">Lecture globale : tout ce qui est réellement sorti, effet chantier comme effet fiscal — la paie et la caisse à leur montant, les achats et la sous-traitance en HT. Ce qui le sépare de la marge nette, c’est le périmètre du stock : global ici, limité à l’effet chantier là-bas. Les deux coïncident tant que le stock de l’effet chantier ne peut pas être isolé. Décaissements retenus : {kpis?.decaissementsGlobauxHt !== undefined ? `${fmt(kpis.decaissementsGlobauxHt)} MAD` : "—"}</p>
+          <p className="text-[11px] italic text-content-muted/85 dark:text-[#3d4350] mt-1">Lecture globale : tout ce qui est réellement sorti, effet chantier comme effet fiscal — la paie et la caisse à leur montant, les achats et la sous-traitance en HT. La marge nette, elle, écarte les opérations à effet fiscal — c’est là leur principale différence, le périmètre du stock s’y ajoutant. Décaissements retenus : {kpis?.decaissementsGlobauxHt !== undefined ? `${fmt(kpis.decaissementsGlobauxHt)} MAD` : "—"}</p>
         </div>
         <div className={`text-3xl font-black font-['Space_Grotesk'] mt-4 sm:mt-0 ${kpis?.resultatHorsFiscaliteHt && kpis.resultatHorsFiscaliteHt < 0 ? "text-red-600 dark:text-red-500" : "text-green-600 dark:text-green-500"}`}>
           {loading ? <Skeleton className="w-32 h-8" /> : `${kpis?.resultatHorsFiscaliteHt !== undefined ? fmt(kpis.resultatHorsFiscaliteHt) : "—"} MAD`}
