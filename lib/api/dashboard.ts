@@ -44,12 +44,16 @@ export interface DashboardKpisDTO {
   /** Same outflows net of the recoverable TVA on settled purchases. */
   decaissementsGlobauxHt: number;
   /**
-   * Outflows flagged effet chantier and not effet fiscal.
-   *
-   * No longer feeds Résultat Hors Fiscalité — that reads the real outflows
-   * now. Still served, and still a column of its own in the Excel export.
+   * Les sorties marquées effet chantier et non effet fiscal — la part filtrable
+   * des décaissements réels. Également une colonne de l'export Excel.
    */
   decaissementsEffetChantierHt: number;
+  /**
+   * Les décaissements réels du calcul 1 : le périmètre effet chantier pour les
+   * achats et la caisse, qui portent les drapeaux, plus la sous-traitance et la
+   * paie entières, qui n'en portent aucun.
+   */
+  decaissementsReelsHt: number;
 
   // Margin formulas.
   margeNetteComptableHt: number;
