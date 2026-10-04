@@ -31,9 +31,16 @@ export interface DashboardKpisDTO {
   valeurStocksAuDepotHt: number;
   valeurStocksSurChantiersHt: number;
   /**
-   * Le stock retenu par la marge nette comptable : celui de l'effet chantier.
-   * Égal au stock global tant qu'un mouvement de stock ne peut pas être
-   * rattaché à l'achat qui l'a créé.
+   * Le stock retenu par le résultat hors fiscalité : celui de l'effet chantier.
+   *
+   * Chaque entrée porte la ligne de commande qui l'a produite, donc son prix et
+   * les indicateurs de la commande. La part se lit en prorata de la valeur des
+   * entrées, ligne de stock par ligne de stock — le stock étant fongible, elle
+   * se déduit d'une convention plutôt que d'un rattachement unité par unité.
+   *
+   * Vaut le stock global quand toutes les commandes partagent leurs
+   * indicateurs, et s'en écarte dès qu'un achat à effet fiscal a alimenté le
+   * stock.
    */
   valeurStocksEffetChantierHt: number;
 
