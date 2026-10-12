@@ -31,7 +31,7 @@ export interface DashboardKpisDTO {
   valeurStocksAuDepotHt: number;
   valeurStocksSurChantiersHt: number;
   /**
-   * Stock retenu par le résultat hors fiscalité : égal au stock global.
+   * Stock informatif : égal au stock global, exclu des deux résultats.
    * Le prorata par origine des achats a été retiré.
    */
   valeurStocksEffetChantierHt: number;
@@ -48,18 +48,15 @@ export interface DashboardKpisDTO {
    */
   decaissementsEffetChantierHt: number;
   /**
-   * Les décaissements réels du calcul 1 : le périmètre effet chantier pour les
+   * Les décaissements réels du calcul 2 : le périmètre effet chantier pour les
    * achats et la caisse, qui portent les drapeaux, plus la sous-traitance et la
    * paie entières, qui n'en portent aucun.
    */
   decaissementsReelsHt: number;
 
-  // Les deux lectures du résultat : elles diffèrent par le périmètre des
-  // décaissements — l'une écarte l'effet fiscal, l'autre non — et par celui
-  // du stock.
-  /** Calcul 2 : la situation globale, effet fiscal compris. */
+  /** Calcul 1 : encaissements réels HT - décaissements globaux HT, sans stock. */
   margeNetteComptableHt: number;
-  /** Calcul 1 : la situation réelle d'exploitation, hors effet fiscal. */
+  /** Calcul 2 : encaissements réels HT - décaissements hors fiscalité HT, sans stock. */
   resultatHorsFiscaliteHt: number;
   margeEnCoursPrevisionnelleHt: number;
 }
