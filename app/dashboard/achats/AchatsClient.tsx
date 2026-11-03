@@ -35,7 +35,7 @@ import { fetchAchats } from "@/lib/api/achats";
 import { hydrate } from "@/components/functions2";
 import type { Achat, AchatsHydrated } from "@/components/functions2";
 import { achatsHydrationConfig } from "@/components/functions2";
-import { fetchArticles } from "@/lib/api/articles";
+import { fetchAllArticles } from "@/lib/api/articles";
 import { fetchBpuLignes } from "@/lib/api/bpu";
 import type { BpuLigneDTO } from "@/lib/api/bpu";
 import { fmt } from "@/components/functions2";
@@ -136,7 +136,7 @@ export default function AchatsClient() {
         fetchAchats(),
         fetchFournisseurs(),
         fetchChantiers(),
-        fetchArticles(),
+        fetchAllArticles(),
       ]);
 
       setAchats(achatsData ?? []);
@@ -155,8 +155,11 @@ export default function AchatsClient() {
         }))
       );
 
+      // La liste entiere, pas une premiere page : le selecteur d'article doit
+      // proposer tout le catalogue. Il s'arretait au 50e par ordre
+      // alphabetique, ce qui se lit comme un defilement casse.
       setArticles(
-        articlesData.content.map(a => ({
+        articlesData.map(a => ({
           id: a.id,
           designation: a.designation,
           prixAchatRef: a.prixAchatRef,
