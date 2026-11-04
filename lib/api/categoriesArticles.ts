@@ -1,4 +1,5 @@
 import apiClient, { unwrapApiPayload } from "./client";
+import { chargerToutesLesPages } from "./paging";
 
 export interface CategorieArticleDTO {
     id: string;
@@ -20,10 +21,24 @@ export interface CategoriesPage {
     totalPages: number;
 }
 
-export async function fetchCategoriesArticles() {
-    const { data } = await apiClient.get("/categories-articles?page=0&size=100");
+export async function fetchCategoriesArticles(page = 0, size = 100) {
+    const { data } = await apiClient.get(
+        `/categories-articles?page=${page}&size=${size}`
+    );
 
     return unwrapApiPayload<CategoriesPage>(data);
+}
+
+/**
+ * Toutes les catégories, pour les listes qui doivent les présenter en entier.
+ *
+ * L'appel ci-dessus demandait une page de 100 en dur, donc une arborescence
+ * plus large se coupait sans le dire. Voir ./paging.
+ */
+export async function fetchAllCategoriesArticles(): Promise<CategorieArticleDTO[]> {
+    return chargerToutesLesPages<CategorieArticleDTO>(
+        (page, size) => fetchCategoriesArticles(page, size)
+    );
 }
 
 export async function createCategorieArticle(

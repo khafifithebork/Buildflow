@@ -6,7 +6,7 @@ import {
   createArticle,
   updateArticle,
   deleteArticle,
-  fetchArticles,
+  fetchAllArticles,
   type CreateArticleDTO,
 } from "@/lib/api/articles";
 import CatalogueClient from "./CatalogueClient";
@@ -24,7 +24,7 @@ import {
 
 import type { Article } from "@/components/functions2";
 import {
-  fetchCategoriesArticles,
+  fetchAllCategoriesArticles,
   createCategorieArticle,
   type CategorieArticleDTO
 } from "@/lib/api/categoriesArticles";
@@ -64,15 +64,16 @@ export default function CataloguePage() {
 
     try {
       const [articlesRes, categoriesRes, fournisseursRes] = await Promise.all([
-        fetchArticles(0, 100, "designation,asc"),
-        fetchCategoriesArticles(),
+        // Le catalogue entier, pas une page de 100 : c'est le catalogue.
+        fetchAllArticles("designation,asc"),
+        fetchAllCategoriesArticles(),
         fetchFournisseurs(),
       ]);
 
-      setCategories(categoriesRes.content);
+      setCategories(categoriesRes);
       setFournisseurs(fournisseursRes ?? []);
 
-      const items = articlesRes.content.map((item) => ({
+      const items = articlesRes.map((item) => ({
         ...item,
         categorieLibelle: item.categorieLibelle ?? "Autre",
         actif: item.actif ?? true,

@@ -11,7 +11,7 @@ import {
 } from "@/lib/api/stocks";
 import { extractApiErrorMessage } from "@/lib/api/client";
 import { fetchChantiers, type ChantierDTO } from "@/lib/api/chantier";
-import { fetchArticles } from "@/lib/api/articles";
+import { fetchAllArticles } from "@/lib/api/articles";
 import { useAuth } from "@/lib/authContext";
 import {
   Section, Card,
@@ -81,8 +81,10 @@ export default function StocksClient() {
   useEffect(() => { loadChantiers(); }, [loadChantiers]);
   useEffect(() => { if (chantierId) loadStocks(chantierId); }, [chantierId, loadStocks]);
   useEffect(() => {
-    fetchArticles(0, 200, "designation,asc")
-      .then((res) => setArticles(res.content.map((a) => ({ id: a.id, code: a.code, designation: a.designation }))))
+    // Tout le catalogue : le selecteur de mouvement de stock doit pouvoir
+    // designer n'importe quel article, pas les 200 premiers.
+    fetchAllArticles("designation,asc")
+      .then((res) => setArticles(res.map((a) => ({ id: a.id, code: a.code, designation: a.designation }))))
       .catch(() => setArticles([]));
   }, []);
 

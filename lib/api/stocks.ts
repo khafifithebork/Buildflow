@@ -1,4 +1,5 @@
 import apiClient, { toArrayPayload, unwrapApiPayload } from "./client";
+import { chargerToutesLesPages, type BackendPage } from "./paging";
 
 export type TypeMouvement = "ENTREE" | "SORTIE" | "AJUSTEMENT" | "TRANSFERT";
 
@@ -53,6 +54,25 @@ export async function fetchStocksByChantier(
 }
 
 /**
+ * Tout le stock d'un chantier.
+ *
+ * La version ci-dessus passe par toArrayPayload, qui ne garde que `content` :
+ * elle ne peut donc pas savoir s'il reste des pages. Celle-ci lit la page
+ * entiere et parcourt jusqu'au bout — voir ./paging.
+ */
+export async function fetchAllStocksByChantier(
+  chantierId: string,
+  sort = "article.designation"
+): Promise<StockArticleDTO[]> {
+  return chargerToutesLesPages<StockArticleDTO>(async (page, size) => {
+    const { data } = await apiClient.get<unknown>(`/stocks/chantiers/${chantierId}`, {
+      params: { page, size, sort },
+    });
+    return unwrapApiPayload<BackendPage<StockArticleDTO>>(data);
+  });
+}
+
+/**
  * Create a manual stock movement (entrée/sortie/ajustement).
  * POST /api/v1/stocks/mouvements
  */
@@ -74,6 +94,18 @@ export async function fetchStocksDepot(
     params: { page, size, sort },
   });
   return toArrayPayload<StockArticleDTO>(data);
+}
+
+/** Tout le stock du depot central. Meme raison que ci-dessus. */
+export async function fetchAllStocksDepot(
+  sort = "article.designation"
+): Promise<StockArticleDTO[]> {
+  return chargerToutesLesPages<StockArticleDTO>(async (page, size) => {
+    const { data } = await apiClient.get<unknown>("/stocks/depot", {
+      params: { page, size, sort },
+    });
+    return unwrapApiPayload<BackendPage<StockArticleDTO>>(data);
+  });
 }
 
 /**

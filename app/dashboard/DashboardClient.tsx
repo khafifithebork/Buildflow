@@ -38,7 +38,7 @@ import { fetchChantiers } from "@/lib/api/chantier";
 import { fetchCaisses, fetchTransactions } from "@/lib/api/tresorerie";
 import { fetchContratsSousTraitant, fetchPaiements } from "@/lib/api/sousTraitance";
 import { fetchSalaires } from "@/lib/api/salaires";
-import { fetchArticles } from "@/lib/api/articles";
+import { fetchAllArticles } from "@/lib/api/articles";
 import { fetchEmployes } from "@/lib/api/employes";
 import { fetchEcritures } from "@/lib/api/comptabilite";
 import { fetchStocksByChantier, type StockArticleDTO } from "@/lib/api/stocks";
@@ -121,9 +121,9 @@ export default function DashboardClient() {
         safe(canTresorerie, () => fetchCaisses(), []),
         safe(canSousTraitance, () => fetchContratsSousTraitant(), []),
         safe(canSalaires, () => fetchSalaires(), []),
-        safe(canCatalogue, () => fetchArticles(0, 100, "designation,asc"), {
-          content: [], totalElements: 0, totalPages: 0, number: 0, size: 0, first: true, last: true,
-        }),
+        // Tous les articles : la valorisation lisait une page de 100, donc un
+        // catalogue plus large faussait les chiffres en silence.
+        safe(canCatalogue, () => fetchAllArticles("designation,asc"), []),
         safe(canAnnuaire, () => fetchEmployes(), []),
         safe(canComptabilite, () => fetchEcritures(), []),
       ]);
@@ -151,7 +151,7 @@ export default function DashboardClient() {
       setFiches(fichesData as unknown as FichePaie[]);
 
       setArticles(
-        articlesRes.content.map((a) => ({
+        articlesRes.map((a) => ({
           ...a,
           categorieLibelle: a.categorieLibelle ?? "Autre",
           actif: a.actif ?? true,

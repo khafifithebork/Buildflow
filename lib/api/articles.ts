@@ -1,4 +1,5 @@
 import apiClient, { toArrayPayload, unwrapApiPayload } from "./client";
+import { chargerToutesLesPages } from "./paging";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Backend DTO shape returned by GET /api/v1/articles and GET /api/v1/articles/{id}
@@ -95,37 +96,19 @@ export async function fetchArticles(
 }
 
 /**
- * Fetch EVERY article, page by page.
+ * Tous les articles, pour les ecrans qui ont besoin du catalogue entier :
+ * le selecteur d'article d'une nouvelle commande, la page Catalogue, les
+ * stocks, le tableau de bord.
  *
- * For the pickers that need a complete list — choosing an article on a new
- * purchase order, for one. Those each picked their own page size (50 here,
- * 100 there, 200 elsewhere) and every one of them cut the list off with no
- * message: the form simply stopped offering articles partway through the
- * alphabet, which reads as a broken scrollbar rather than as missing data.
- *
- * A bigger number only moves the cliff. Spring clamps `size` to
- * `max-page-size` — 2000 unless configured — and says nothing when it does,
- * so the next cap would fail exactly as quietly as this one.
- *
- * Walking to `last` has no cliff. PAGE_LIMIT bounds how many requests this
- * will ever make, for a backend that never sets `last`; it is not a row cap,
- * and at this page size it covers 10 000 articles.
+ * Le pourquoi du parcours par pages — et la falaise qu'un simple `size` plus
+ * grand ne ferait que deplacer — est explique dans ./paging.
  */
 export async function fetchAllArticles(
   sort = "designation,asc"
 ): Promise<ArticleDTO[]> {
-  const PAGE_SIZE = 200;
-  const PAGE_LIMIT = 50;
-
-  const all: ArticleDTO[] = [];
-  for (let page = 0; page < PAGE_LIMIT; page += 1) {
-    const res = await fetchArticles(page, PAGE_SIZE, sort);
-    all.push(...res.content);
-    // `last` se deduit de totalPages, le backend ne l'envoyant pas. Le test
-    // sur le contenu vide couvre en plus une reponse sans pagination.
-    if (res.last || res.content.length === 0) break;
-  }
-  return all;
+  return chargerToutesLesPages<ArticleDTO>(
+    (page, size) => fetchArticles(page, size, sort)
+  );
 }
 
 /**
